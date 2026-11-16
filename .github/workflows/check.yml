@@ -1,0 +1,28 @@
+name: Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    uses: otpki/.github/.github/workflows/reusable-go-check.yml@v1
+    with:
+      commands: |
+        just format-check
+        just lint
+        just test-ci
+        just test-race
+        just build
+        just tidy
+      vulncheck-command: just vulncheck

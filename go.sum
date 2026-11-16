@@ -1,0 +1,16 @@
+filippo.io/bigmod v0.1.0 h1:UNzDk7y9ADKST+axd9skUpBQeW7fG2KrTZyOE4uGQy8=
+filippo.io/bigmod v0.1.0/go.mod h1:OjOXDNlClLblvXdwgFFOQFJEocLhhtai8vGLy0JCZlI=
+github.com/otpki/circl v0.0.0-20261112151406-a03bc4371af7 h1:xexbCEmf6POLlRYfGdZ6MtU51y/Kc4ZmkIdOnZzOKWs=
+github.com/otpki/circl v0.0.0-20261112151406-a03bc4371af7/go.mod h1:h5LNyxAc5nTue9DS5jT+48en2PSDYt3zdGnz5OstK6c=
+github.com/otpki/iogo v0.0.0-20261112152310-36bbc5e4b73f h1:fIxymO8PjqU/72BmM7a6niHp4J5a23nIfHK8IPDRtFY=
+github.com/otpki/iogo v0.0.0-20261112152310-36bbc5e4b73f/go.mod h1:gboEmApSUrn9ynZhFc54iwy60uaAAHCwRB1FCMgC5Js=
+github.com/otpki/otpki-pkg v0.0.0-20261116151636-54f92c830ec9 h1:+qXjBjJGtekN2+1y3FJNpK5Bt9Ln/My1TgQgP3exaOw=
+github.com/otpki/otpki-pkg v0.0.0-20261116151636-54f92c830ec9/go.mod h1:/rAmmI1/vPsbAoErXihTLn1uinGuWl6sUPDw4EeKtqE=
+github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWDWE=
+github.com/stretchr/testify v1.12.1/go.mod h1:MDEgiDPPsNp5cuIrHPPCyornHKgEVbtFUmoNlxoYthg=
+go.yaml.in/yaml/v3 v3.0.6 h1:zcDfvjXEqTQmpjniUBLc91xYJMB2c4QOFxEF/LCEckM=
+go.yaml.in/yaml/v3 v3.0.6/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=
+golang.org/x/crypto v0.59.0 h1:xS2jhqYbzNrpvkWP2YTDf4TJwBy3ykR03i8vFDxEc7c=
+golang.org/x/crypto v0.59.0/go.mod h1:veDyUwATGs3c+vN3VfTbzViMGXeTBk3WyhBOkn+F/4U=
+golang.org/x/sys v0.50.0 h1:dkKZEFTEKaLr1sjhs0WiKqoi8Jj5nHbS3Njmx1UoMJs=
+golang.org/x/sys v0.50.0/go.mod h1:hNLxWAXmnKAxqDtdwIYC4bM9oQPEecfsnNMuSxOs3og=
