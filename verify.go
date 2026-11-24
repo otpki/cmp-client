@@ -58,23 +58,40 @@ func (c *Client) VerifyResponse(request *cmp.PKIMessage, raw []byte, secret []by
 			return nil, fmt.Errorf("CMP response signature: %w", err)
 		}
 	} else {
-		if len(secret) == 0 || !alg.Algorithm.Equal(oids.OidPasswordBasedMAC) {
-			return nil, fmt.Errorf("CMP response requires a pinned signer certificate or legacy PBM credentials")
+		if len(secret) == 0 {
+			return nil, fmt.Errorf("CMP response requires a pinned signer certificate or MAC credentials")
 		}
-		var parameters cmp.PBMParameter
-		rest, err := asn1.Unmarshal(alg.Parameters.FullBytes, &parameters)
-		if err != nil || len(rest) != 0 {
-			return nil, fmt.Errorf("invalid CMP response PBM parameters")
+		requestAlg, _, _ := request.Header.ParsedProtectionAlg()
+		if requestAlg != nil && requestAlg.Algorithm.Equal(oids.OidPBMAC1) && !alg.Algorithm.Equal(oids.OidPBMAC1) {
+			return nil, fmt.Errorf("PBMAC1 response must not downgrade to another protection algorithm")
 		}
-		if len(parameters.Salt) < 8 || len(parameters.Salt) > 1024 {
-			return nil, fmt.Errorf("invalid CMP response PBM salt length")
+		var mac []byte
+		switch {
+		case alg.Algorithm.Equal(oids.OidPasswordBasedMAC):
+			var parameters cmp.PBMParameter
+			rest, err = asn1.Unmarshal(alg.Parameters.FullBytes, &parameters)
+			if err != nil || len(rest) != 0 {
+				return nil, fmt.Errorf("invalid CMP response PBM parameters")
+			}
+			if len(parameters.Salt) < 8 || len(parameters.Salt) > 1024 {
+				return nil, fmt.Errorf("invalid CMP response PBM salt length")
+			}
+			mac, err = cmp.ComputePBM(secret, protected, parameters, false)
+		case alg.Algorithm.Equal(oids.OidPBMAC1):
+			var parameters cmp.PBMAC1Params
+			rest, err = asn1.Unmarshal(alg.Parameters.FullBytes, &parameters)
+			if err != nil || len(rest) != 0 {
+				return nil, fmt.Errorf("invalid CMP response PBMAC1 parameters")
+			}
+			mac, err = cmp.ComputePBMAC1(secret, protected, parameters, false)
+		default:
+			return nil, fmt.Errorf("unsupported CMP response MAC algorithm")
 		}
-		mac, err := cmp.ComputePBM(secret, protected, parameters, false)
 		if err != nil {
-			return nil, fmt.Errorf("CMP response PBM: %w", err)
+			return nil, fmt.Errorf("CMP response MAC: %w", err)
 		}
 		if !hmac.Equal(mac, response.Protection.Bytes) {
-			return nil, fmt.Errorf("CMP response PBM mismatch")
+			return nil, fmt.Errorf("CMP response MAC mismatch")
 		}
 	}
 	h, r := response.Header, request.Header

@@ -1,4 +1,4 @@
-// Command cmp-client performs CMP enrollment with legacy PBM or signature protection.
+// Command cmp-client performs CMP enrollment with PBM, PBMAC1 or signature protection.
 package main
 
 import (
@@ -49,8 +49,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	signerCertPath := flags.String("signer-cert", "", "PEM message-protection certificate (CR/KUR/P10CR)")
 	serverCertPath := flags.String("server-cert", "", "PEM certificate pin for CMP response signatures")
 	csrPath := flags.String("csr", "", "PEM or DER PKCS#10 request (P10CR)")
-	secretFile := flags.String("secret-file", "", "file containing exact PBM secret bytes (IR)")
-	secretEnv := flags.String("secret-env", "", "environment variable containing the PBM secret (IR)")
+	usePBMAC1 := flags.Bool("pbmac1", false, "use PBMAC1 (PBKDF2/HMAC-SHA-256) for IR")
+	secretFile := flags.String("secret-file", "", "file containing exact shared secret bytes (IR)")
+	secretEnv := flags.String("secret-env", "", "environment variable containing the shared secret (IR)")
 	senderKID := flags.String("sender-kid", "", "bootstrap identity / senderKID")
 	output := flags.String("out", "", "write issued certificate PEM here; default stdout")
 	caOutput := flags.String("ca-out", "", "optional output for returned caPubs (not trust anchors)")
@@ -70,6 +71,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	}
 	if *timeout <= 0 {
 		return fmt.Errorf("--timeout must be positive")
+	}
+	if *usePBMAC1 && command != "ir" {
+		return fmt.Errorf("--pbmac1 is supported with IR; use Exchange for other MAC-protected messages")
 	}
 	ctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
@@ -117,7 +121,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		if err != nil {
 			return err
 		}
-		response, err := client.IR(ctx, cmpclient.IRRequest{URL: *endpoint, Sender: sender, Recipient: recipient, Subject: pkix.Name{CommonName: *commonName}, SignerKey: key, SharedSecret: secret, SenderKID: []byte(*senderKID)})
+		response, err := client.IR(ctx, cmpclient.IRRequest{UsePBMAC1: *usePBMAC1, URL: *endpoint, Sender: sender, Recipient: recipient, Subject: pkix.Name{CommonName: *commonName}, SignerKey: key, SharedSecret: secret, SenderKID: []byte(*senderKID)})
 		if err != nil {
 			return err
 		}

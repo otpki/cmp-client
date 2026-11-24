@@ -12,10 +12,11 @@ import (
 	"github.com/otpki/otpki-pkg/cmp"
 )
 
-// Protection selects either legacy PasswordBasedMac or a certificate signature.
-// Never supply both. PBMAC1 is not implemented.
+// Protection selects password-based MAC or a certificate signature.
+// Never supply both.
 type Protection struct {
 	SharedSecret []byte
+	UsePBMAC1    bool
 	SignerCert   *x509.Certificate
 	SignerKey    crypto.Signer
 }
@@ -34,6 +35,9 @@ func (c *Client) Exchange(ctx context.Context, endpoint string, msg *cmp.PKIMess
 	if password == signature {
 		return nil, fmt.Errorf("select exactly one CMP protection method")
 	}
+	if protection.UsePBMAC1 && !password {
+		return nil, fmt.Errorf("PBMAC1 requires a shared secret")
+	}
 	if signature && c.ServerCertificate == nil {
 		return nil, fmt.Errorf("signature exchange requires ServerCertificate")
 	}
@@ -43,6 +47,9 @@ func (c *Client) Exchange(ctx context.Context, endpoint string, msg *cmp.PKIMess
 	}
 	protect := func(msg *cmp.PKIMessage) error {
 		if password {
+			if protection.UsePBMAC1 {
+				return ApplyPBMAC1Protection(msg, protection.SharedSecret, random)
+			}
 			return ApplyPBMProtection(msg, protection.SharedSecret, random)
 		}
 		return ApplySignatureProtection(msg, protection.SignerCert, protection.SignerKey)

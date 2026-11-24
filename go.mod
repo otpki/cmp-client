@@ -4,7 +4,7 @@ go 1.27.4
 
 require (
 	github.com/otpki/iogo v0.0.0-20261112152310-36bbc5e4b73f
-	github.com/otpki/otpki-pkg v0.0.0-20261116151636-54f92c830ec9
+	github.com/otpki/otpki-pkg v0.0.0-20261124210118-850938684aa0
 	github.com/stretchr/testify v1.12.1
 )
 

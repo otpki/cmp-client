@@ -8,7 +8,7 @@ import (
 	cmp "github.com/otpki/otpki-pkg/cmp"
 )
 
-// IR performs Initialization Request using PBM protection
+// IR performs Initialization Request using PBM or PBMAC1 protection.
 func (c *Client) IR(ctx context.Context, req IRRequest) (*IRResponse, error) {
 	if c == nil {
 		return nil, fmt.Errorf("nil client")
@@ -38,6 +38,9 @@ func (c *Client) IR(ctx context.Context, req IRRequest) (*IRResponse, error) {
 		"IR",
 		req.SharedSecret,
 		func(msg *cmp.PKIMessage) error {
+			if req.UsePBMAC1 {
+				return ApplyPBMAC1Protection(msg, req.SharedSecret, rnd)
+			}
 			return ApplyPBMProtection(msg, req.SharedSecret, rnd)
 		},
 	)

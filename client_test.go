@@ -185,7 +185,7 @@ func TestBuildersPropagateRandomFailuresAndValidateKeys(t *testing.T) {
 
 func TestEnrollmentOperations(t *testing.T) {
 	t.Parallel()
-	for _, op := range []string{"IR", "CR", "KUR", "P10CR"} {
+	for _, op := range []string{"IR", "IR PBMAC1", "CR", "KUR", "P10CR"} {
 		t.Run(op, func(t *testing.T) {
 			t.Parallel()
 			cert, signer := testIdentity(t)
@@ -197,14 +197,23 @@ func TestEnrollmentOperations(t *testing.T) {
 				require.NoError(t, err)
 				protected, err := cmp.ProtectedPartFromWire(msg)
 				require.NoError(t, err)
-				if op == "IR" {
+				if op == "IR" || op == "IR PBMAC1" {
 					alg, present, err := msg.Header.ParsedProtectionAlg()
 					require.NoError(t, err)
 					require.True(t, present)
-					var parameters cmp.PBMParameter
-					_, err = asn1.Unmarshal(alg.Parameters.FullBytes, &parameters)
-					require.NoError(t, err)
-					mac, err := cmp.ComputePBM(testSecret, protected, parameters, false)
+					var mac []byte
+					if op == "IR PBMAC1" {
+						require.True(t, alg.Algorithm.Equal(oids.OidPBMAC1))
+						var parameters cmp.PBMAC1Params
+						_, err = asn1.Unmarshal(alg.Parameters.FullBytes, &parameters)
+						require.NoError(t, err)
+						mac, err = cmp.ComputePBMAC1(testSecret, protected, parameters, false)
+					} else {
+						var parameters cmp.PBMParameter
+						_, err = asn1.Unmarshal(alg.Parameters.FullBytes, &parameters)
+						require.NoError(t, err)
+						mac, err = cmp.ComputePBM(testSecret, protected, parameters, false)
+					}
 					require.NoError(t, err)
 					require.True(t, hmac.Equal(mac, msg.Protection.Bytes))
 				} else {
@@ -235,9 +244,12 @@ func TestEnrollmentOperations(t *testing.T) {
 				issued, err := x509.CreateCertificate(rand.Reader, &x509.Certificate{SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: "issued"}, NotBefore: time.Now(), NotAfter: time.Now().Add(time.Hour)}, cert, pub, signer)
 				require.NoError(t, err)
 				response := responseFor(t, msg, cmp.PKIBody{Type: replyType, Value: cmp.CertRepMessage{Responses: []cmp.CertResponse{{CertReqID: id, Status: cmp.PKIStatusInfo{Status: cmp.PKIStatusAccepted}, CertifiedKeyPair: cmp.CertifiedKeyPair{CertOrEncCert: asn1.RawValue{Class: 2, Tag: 0, IsCompound: true, Bytes: issued}}}}}})
-				if op == "IR" {
+				switch op {
+				case "IR PBMAC1":
+					require.NoError(t, ApplyPBMAC1Protection(response, testSecret, nil))
+				case "IR":
 					require.NoError(t, ApplyPBMProtection(response, testSecret, nil))
-				} else {
+				default:
 					require.NoError(t, ApplySignatureProtection(response, cert, signer))
 				}
 				w.Header().Set("Content-Type", "application/pkixcmp")
@@ -248,8 +260,15 @@ func TestEnrollmentOperations(t *testing.T) {
 			name, err := DirectoryName(pkix.Name{CommonName: "endpoint"})
 			require.NoError(t, err)
 			switch op {
-			case "IR":
-				resp, err := client.IR(t.Context(), IRRequest{URL: server.URL, Sender: name, Recipient: name, SharedSecret: testSecret, SignerKey: key})
+			case "IR", "IR PBMAC1":
+				resp, err := client.IR(t.Context(), IRRequest{
+					UsePBMAC1:    op == "IR PBMAC1",
+					URL:          server.URL,
+					Sender:       name,
+					Recipient:    name,
+					SharedSecret: testSecret,
+					SignerKey:    key,
+				})
 				require.NoError(t, err)
 				require.NotNil(t, resp.Certificate)
 			case "CR", "KUR":

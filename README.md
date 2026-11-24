@@ -11,23 +11,24 @@ OTPKI server, generated server APIs, Docker, or private repository credentials.
 
 | Operation | Request protection | Behavior |
 | --- | --- | --- |
-| IR | Legacy PasswordBasedMac (SHA-256/HMAC-SHA256) | CRMF signature POP; one or more requests |
+| IR | PasswordBasedMac or PBMAC1 (PBKDF2/HMAC-SHA256) | CRMF signature POP; one or more requests |
 | CR | Certificate signature | CRMF signature POP; one or more requests |
 | KUR | Certificate signature | New-key CRMF signature POP; one or more requests |
 | P10CR | Certificate signature | Validated PKCS#10 signature |
 | Polling | Same protection as enrollment | Verified responses, transaction and nonce continuity, bounded retries/waits |
-| Custom messages | Legacy PBM or signature | `Exchange` accepts the shared CMP wire model |
+| Custom messages | Legacy PBM, PBMAC1, or signature | `Exchange` accepts the shared CMP wire model |
 | Malformed/security tests | Caller-controlled DER | `SendRaw` performs only bounded HTTP transport |
 
 High-level enrollment verifies response protection, version, transaction ID,
 recipient nonce, sender/recipient names, request IDs, and issued public keys.
 For signature responses, configure the exact server signing certificate with
 `ServerCertificate`; certificates received in `extraCerts` or `caPubs` never
-establish trust. PBM enrollment authenticates PBM responses using the supplied
+establish trust. Password-based enrollment authenticates MAC responses using the supplied
 secret, or requires signature responses when a server certificate is pinned.
-Legacy SHA-1 PBM and PBMAC1 are not enabled.
+Legacy SHA-1 PBM is not enabled. Set `IRRequest.UsePBMAC1` or
+`Protection.UsePBMAC1` for PBMAC1; legacy PBM remains the default.
 
-Automatic certificate confirmation, a high-level revocation API, PBMAC1, and
+Automatic certificate confirmation, a high-level revocation API, and
 server-generated keys remain follow-up work. `Exchange` can carry caller-built
 confirmation, revocation, and general messages. Enrollment returns the final
 message/raw bytes and per-request results so callers can continue a transaction.
@@ -105,6 +106,7 @@ cmp-client ir --url https://pki.example/cmp/enroll \
 ```
 
 For a local server with an untrusted TLS certificate, append `--insecure`.
+For PBMAC1 enrollment, append `--pbmac1`.
 For an environment-provided secret, use `--secret-env CMP_SECRET` instead of
 `--secret-file`. Secrets are never passed as literal CLI arguments or printed.
 
