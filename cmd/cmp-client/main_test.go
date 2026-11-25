@@ -37,14 +37,20 @@ func TestCLIInsecureStillRequiresCMPProtection(t *testing.T) {
 	secretPath := filepath.Join(dir, "secret")
 	require.NoError(t, os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER}), 0o600))
 	require.NoError(t, os.WriteFile(secretPath, []byte("fixture-secret"), 0o600))
-	for _, protected := range []bool{true, false} {
+	for _, mode := range []string{"PBM", "PBMAC1", "unprotected"} {
 		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			raw, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
 			req, _, _, err := cmp.DecodePKIMessage(raw)
 			require.NoError(t, err)
 			resp := &cmp.PKIMessage{Header: cmp.PKIHeader{Pvno: 2, Sender: req.Header.Recipient, Recipient: req.Header.Sender, TransactionID: req.Header.TransactionID, RecipNonce: req.Header.SenderNonce, SenderNonce: bytes.Repeat([]byte{4}, 16)}, Body: cmp.PKIBody{Type: cmp.BodyTypeIP, Value: cmp.CertRepMessage{Responses: []cmp.CertResponse{{CertReqID: 0, Status: cmp.PKIStatusInfo{Status: cmp.PKIStatusAccepted}, CertifiedKeyPair: cmp.CertifiedKeyPair{CertOrEncCert: asn1.RawValue{Class: 2, Tag: 0, IsCompound: true, Bytes: certDER}}}}}}}
-			if protected {
+			switch mode {
+			case "PBMAC1":
+				alg, _, err := req.Header.ParsedProtectionAlg()
+				require.NoError(t, err)
+				require.Equal(t, "1.2.840.113549.1.5.14", alg.Algorithm.String())
+				require.NoError(t, cmpclient.ApplyPBMAC1Protection(resp, []byte("fixture-secret"), nil))
+			case "PBM":
 				require.NoError(t, cmpclient.ApplyPBMProtection(resp, []byte("fixture-secret"), nil))
 			}
 			der, err := cmp.MarshalPKIMessage(resp)
@@ -53,10 +59,13 @@ func TestCLIInsecureStillRequiresCMPProtection(t *testing.T) {
 			_, _ = w.Write(der)
 		}))
 		args := []string{"ir", "--url", server.URL, "--key", keyPath, "--secret-file", secretPath, "--common-name", "device"}
+		if mode == "PBMAC1" {
+			args = append(args, "--pbmac1")
+		}
 		var stdout, stderr bytes.Buffer
 		require.Error(t, run(t.Context(), args, &stdout, &stderr))
 		err = run(t.Context(), append(args, "--insecure"), &stdout, &stderr)
-		if protected {
+		if mode != "unprotected" {
 			require.NoError(t, err)
 			block, _ := pem.Decode(stdout.Bytes())
 			require.NotNil(t, block)

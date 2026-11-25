@@ -20,7 +20,7 @@ type IRRequestEntry struct {
 	SignerKey  crypto.Signer
 }
 
-// IRRequest represents an Initialization Request (IR) using PBM protection.
+// IRRequest represents an Initialization Request (IR) using PBM or PBMAC1 protection.
 type IRRequest struct {
 	URL string
 
@@ -35,7 +35,9 @@ type IRRequest struct {
 	SignerKey crypto.Signer
 
 	SharedSecret []byte
-	SenderKID    []byte
+	// UsePBMAC1 selects PBKDF2/HMAC protection instead of legacy PasswordBasedMac.
+	UsePBMAC1 bool
+	SenderKID []byte
 
 	TransactionID []byte
 	SenderNonce   []byte
